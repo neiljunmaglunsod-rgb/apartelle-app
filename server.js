@@ -123,8 +123,12 @@ app.get('/api/dashboard', async (req, res) => {
 
 // Serve frontend
 app.get('*', (req, res) => {
+  if (!req.session.user) {
+    return res.redirect('/login.html');
+  }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
 
 mongoose.connect(MONGODB_URI, { family: 4 })
   .then(() => {
