@@ -135,6 +135,11 @@ app.get('/api/dashboard', async (req, res) => {
 
 // Serve frontend
 app.get('*', (req, res) => {
+  if (req.path === '/login.html' || req.path === '/') {
+    if (!req.session.user) {
+      return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    }
+  }
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
