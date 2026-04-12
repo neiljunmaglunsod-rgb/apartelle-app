@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>J&J Apartelle</title>
+  <link rel="stylesheet" href="style.css"/>
+  <script>
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(data => { if (!data.loggedIn) window.location.href = '/login.html'; })
+      .catch(() => window.location.href = '/login.html');
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside id="sidebar">
+  <div class="sidebar-logo-wrap">
+    <img src="images/jj-logo.png" alt="J&amp;J Apartelle Logo" class="sidebar-logo"
+         onerror="this.style.display='none';document.getElementById('sidebar-text-brand').style.display='block'"/>
+    <div id="sidebar-text-brand" style="display:none">
+      <div class="sidebar-logo-text">J&amp;J Apartelle</div>
+    </div>
+    <div class="sidebar-logo-sub">Management System</div>
+  </div>
+  <nav>
+    <a class="nav-link active" data-page="dashboard">
+      <span class="icon">🏠</span> Dashboard
+    </a>
+    <a class="nav-link" data-page="calendar">
+      <span class="icon">📅</span> Availability Calendar
+    </a>
+    <a class="nav-link" data-page="bookings">
+      <span class="icon">📋</span> Bookings
+    </a>
+    <a class="nav-link" data-page="guests">
+      <span class="icon">👤</span> Guests
+    </a>
+    <div class="nav-divider"></div>
+    <a class="nav-link" data-page="finances">
+      <span class="icon">💰</span> Income &amp; Expenses
+    </a>
+    <a class="nav-link" data-page="reports">
+      <span class="icon">✨</span> Reports
+    </a>
+    <div class="nav-divider"></div>
+    <a class="nav-link" data-page="settings">
+      <span class="icon">⚙️</span> Settings
+    </a>
+  </nav>
+  <div class="sidebar-footer">J&amp;J Apartelle &copy; 2026</div>
+</aside>
+
+<!-- MAIN -->
+<div id="main">
+  <div class="topbar">
+    <span class="topbar-title" id="topbar-title">Dashboard</span>
+    <span class="topbar-date" id="topbar-date"></span>
+  </div>
+
+  <div class="content">
+
+    <!-- ══════════ DASHBOARD ══════════ -->
+    <div class="page active" id="page-dashboard">
+
+      <!-- Stats Row -->
+      <div class="stats-grid">
+        <div class="stat-card gold-accent"><div class="stat-icon gold">🏠</div><div class="stat-info"><div class="stat-value" id="stat-available">-</div><div class="stat-label">Available Today</div></div></div>
+        <div class="stat-card"><div class="stat-icon red">🔴</div><div class="stat-info"><div class="stat-value" id="stat-occupied">-</div><div class="stat-label">Occupied Today</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">📥</div><div class="stat-info"><div class="stat-value" id="stat-checkins">-</div><div class="stat-label">Check-ins Today</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">📤</div><div class="stat-info"><div class="stat-value" id="stat-checkouts">-</div><div class="stat-label">Check-outs Today</div></div></div>
+        <div class="stat-card gold-accent"><div class="stat-icon gold">💵</div><div class="stat-info"><div class="stat-value income-val" id="stat-income">-</div><div class="stat-label">Income This Month</div></div></div>
+        <div class="stat-card"><div class="stat-icon red">💸</div><div class="stat-info"><div class="stat-value expense-val" id="stat-expense">-</div><div class="stat-label">Expenses This Month</div></div></div>
+        <div class="stat-card gold-accent"><div class="stat-icon gold">📊</div><div class="stat-info"><div class="stat-value" id="stat-net">-</div><div class="stat-label">Net This Month</div></div></div>
+        <div class="stat-card"><div class="stat-icon black">👥</div><div class="stat-info"><div class="stat-value" id="stat-guests">-</div><div class="stat-label">Total Guests</div></div></div>
+      </div>
+
+      <!-- Door Status Cards -->
+      <div class="rooms-grid" id="rooms-status"></div>
+
+      <!-- Quick Reports + Today's Activity -->
+      <div class="dashboard-bottom-grid">
+
+        <!-- Quick Reports Summary -->
+        <div class="card">
+          <div class="card-header card-header-gold">✨ This Month's Summary</div>
+          <div class="card-body">
+            <div class="report-summary-row">
+              <div style="flex:1">
+                <div class="rsrow-label">Income</div>
+                <div class="rsrow-value gold" id="qs-income">₱0</div>
+                <div class="progress-bar-wrap"><div class="progress-bar-fill gold" id="qs-income-bar" style="width:0%"></div></div>
+              </div>
+            </div>
+            <div class="report-summary-row" style="margin-top:14px">
+              <div style="flex:1">
+                <div class="rsrow-label">Expenses</div>
+                <div class="rsrow-value red" id="qs-expense">₱0</div>
+                <div class="progress-bar-wrap"><div class="progress-bar-fill red" id="qs-expense-bar" style="width:0%"></div></div>
+              </div>
+            </div>
+            <div class="report-summary-row" style="margin-top:14px">
+              <div style="flex:1">
+                <div class="rsrow-label">Net Profit</div>
+                <div class="rsrow-value green" id="qs-net">₱0</div>
+                <div class="progress-bar-wrap"><div class="progress-bar-fill green" id="qs-net-bar" style="width:0%"></div></div>
+              </div>
+            </div>
+            <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+              <div class="rsrow-label" style="margin-bottom:10px">Occupancy Rate (This Month)</div>
+              <div id="qs-occupancy-bars"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Today's Activity -->
+        <div class="card">
+          <div class="card-header card-header-gold">📅 Today's Activity</div>
+          <div class="card-body" style="padding:14px 16px">
+            <div style="font-size:11.5px;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Check-ins</div>
+            <div class="activity-list" id="today-checkins-list">
+              <div class="activity-empty">No check-ins today</div>
+            </div>
+            <div style="font-size:11.5px;font-weight:700;color:var(--danger);text-transform:uppercase;letter-spacing:0.05em;margin:14px 0 8px">Check-outs</div>
+            <div class="activity-list" id="today-checkouts-list">
+              <div class="activity-empty">No check-outs today</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Recent Bookings -->
+      <div class="card">
+        <div class="card-header">📋 Recent Bookings</div>
+        <div class="card-body" style="padding:0">
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>Guest</th><th>Door</th><th>Check-in</th><th>Check-out</th><th>Total</th><th>Source</th><th>Status</th></tr></thead>
+              <tbody id="recent-bookings-body"><tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📭</div><p>No bookings yet</p></div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══════════ CALENDAR ══════════ -->
+    <div class="page" id="page-calendar">
+      <div class="page-header">
+        <h2>Availability Calendar</h2>
+      </div>
+      <div class="calendar-controls">
+        <button class="cal-nav" id="cal-prev">&#8249;</button>
+        <span class="cal-month-label" id="cal-month-label"></span>
+        <button class="cal-nav" id="cal-next">&#8250;</button>
+        <button class="btn btn-ghost btn-sm" id="cal-today">Today</button>
+      </div>
+      <div class="calendar-grid" id="calendar-grid"></div>
+      <div class="cal-legend">
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#bfdbfe"></div> Confirmed</div>
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#bbf7d0"></div> Checked-in</div>
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#e2e8f0"></div> Checked-out</div>
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#fff;border:1px solid #e2e8f0"></div> Available</div>
+      </div>
+    </div>
+
+    <!-- ══════════ BOOKINGS ══════════ -->
+    <div class="page" id="page-bookings">
+      <div class="page-header">
+        <h2>Bookings</h2>
+        <button class="btn btn-primary" id="new-booking-btn">+ New Booking</button>
+      </div>
+      <div class="search-bar">
+        <select class="form-control" id="booking-filter-status" style="max-width:160px">
+          <option value="">All Statuses</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="checked-in">Checked-in</option>
+          <option value="checked-out">Checked-out</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <select class="form-control" id="booking-filter-door" style="max-width:130px">
+          <option value="">All Doors</option>
+          <option value="1">Door 1</option>
+          <option value="2">Door 2</option>
+          <option value="3">Door 3</option>
+          <option value="4">Door 4</option>
+        </select>
+        <select class="form-control" id="booking-filter-month" style="max-width:130px">
+          <option value="">All Months</option>
+          <option value="1">January</option><option value="2">February</option>
+          <option value="3">March</option><option value="4">April</option>
+          <option value="5">May</option><option value="6">June</option>
+          <option value="7">July</option><option value="8">August</option>
+          <option value="9">September</option><option value="10">October</option>
+          <option value="11">November</option><option value="12">December</option>
+        </select>
+        <input type="number" class="form-control" id="booking-filter-year" placeholder="Year" style="max-width:100px"/>
+        <button class="btn btn-ghost btn-sm" id="booking-filter-apply">Filter</button>
+        <button class="btn btn-ghost btn-sm" id="booking-filter-clear">Clear</button>
+      </div>
+      <div class="card">
+        <div class="card-body" style="padding:0">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Guest</th><th>Contact</th><th>Door</th>
+                  <th>Check-in</th><th>Check-out</th><th>Nights</th>
+                  <th>Guests</th><th>Source</th><th>Total</th><th>Status</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="bookings-body">
+                <tr><td colspan="11"><div class="empty-state"><div class="empty-icon">📭</div><p>No bookings found</p></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ FINANCES ══════════ -->
+    <div class="page" id="page-finances">
+      <div class="page-header">
+        <h2>Income &amp; Expenses</h2>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-success btn-sm" id="pnl-pdf-btn">⬇ P&amp;L Report PDF</button>
+          <button class="btn btn-primary" id="new-transaction-btn">+ Add Transaction</button>
+        </div>
+      </div>
+
+      <div class="fin-tabs">
+        <button class="fin-tab active" data-fintab="transactions">💳 Transactions</button>
+        <button class="fin-tab" data-fintab="stafffees">🧹 Staff Fees</button>
+      </div>
+
+      <div id="fin-panel-transactions" class="fin-panel">
+        <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+          <select class="form-control" id="finance-month" style="max-width:140px">
+            <option value="1">January</option><option value="2">February</option>
+            <option value="3">March</option><option value="4">April</option>
+            <option value="5">May</option><option value="6">June</option>
+            <option value="7">July</option><option value="8">August</option>
+            <option value="9">September</option><option value="10">October</option>
+            <option value="11">November</option><option value="12">December</option>
+          </select>
+          <input type="number" class="form-control" id="finance-year" style="max-width:100px" value="2026"/>
+          <button class="btn btn-ghost btn-sm" id="finance-filter-btn">View</button>
+          <button class="btn btn-info btn-sm" id="annual-report-btn">Annual Report</button>
+        </div>
+
+        <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+          <div class="stat-card"><div class="stat-icon green">💵</div><div class="stat-info"><div class="stat-value income-val" id="fin-income">₱0</div><div class="stat-label">Total Income</div></div></div>
+          <div class="stat-card"><div class="stat-icon red">💸</div><div class="stat-info"><div class="stat-value expense-val" id="fin-expense">₱0</div><div class="stat-label">Total Expenses</div></div></div>
+          <div class="stat-card"><div class="stat-icon blue">📊</div><div class="stat-info"><div class="stat-value" id="fin-net">₱0</div><div class="stat-label">Net Profit</div></div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">💳 Transactions</div>
+          <div class="card-body" style="padding:0">
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Description</th><th>Amount</th><th>Actions</th></tr></thead>
+                <tbody id="transactions-body">
+                  <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📭</div><p>No transactions found</p></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="fin-panel-stafffees" class="fin-panel" style="display:none">
+        <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+          <select class="form-control" id="sf-door" style="max-width:140px">
+            <option value="">All Doors</option>
+            <option value="1">Door 1</option>
+            <option value="2">Door 2</option>
+            <option value="3">Door 3</option>
+            <option value="4">Door 4</option>
+          </select>
+          <input type="date" class="form-control" id="sf-from" style="max-width:160px" title="From date"/>
+          <input type="date" class="form-control" id="sf-to"   style="max-width:160px" title="To date"/>
+          <button class="btn btn-ghost btn-sm" id="sf-filter-btn">Filter</button>
+          <button class="btn btn-ghost btn-sm" id="sf-clear-btn">Clear</button>
+        </div>
+
+        <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+          <div class="stat-card"><div class="stat-icon gold">🧾</div><div class="stat-info"><div class="stat-value expense-val" id="sf-total">₱0</div><div class="stat-label">Total Staff Fees</div></div></div>
+          <div class="stat-card"><div class="stat-icon blue">🧹</div><div class="stat-info"><div class="stat-value expense-val" id="sf-cleaning">₱0</div><div class="stat-label">Cleaning Total</div></div></div>
+          <div class="stat-card"><div class="stat-icon green">👕</div><div class="stat-info"><div class="stat-value expense-val" id="sf-laundry">₱0</div><div class="stat-label">Laundry Total</div></div></div>
+        </div>
+
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header">🚪 Per-Door Breakdown</div>
+          <div class="card-body" style="padding:0">
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Door</th><th style="text-align:right">Cleaning</th><th style="text-align:right">Laundry</th><th style="text-align:right">Total</th><th style="text-align:right">Checkouts</th></tr></thead>
+                <tbody id="sf-door-body">
+                  <tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📭</div><p>No data</p></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">📋 Fee Log</div>
+          <div class="card-body" style="padding:0">
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Date</th><th>Door</th><th>Guest</th><th>Category</th><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
+                <tbody id="sf-log-body">
+                  <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📭</div><p>No fee records</p></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ REPORTS ══════════ -->
+    <div class="page" id="page-reports">
+      <div class="page-header">
+        <h2>Financial Reports</h2>
+        <div style="display:flex;gap:10px;align-items:center">
+          <select class="form-control" id="report-year" style="max-width:110px"></select>
+          <button class="btn btn-primary" id="load-reports-btn">Load</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header">📋 Monthly Profit &amp; Loss Summary</div>
+        <div class="card-body" style="padding:0">
+          <div class="table-wrapper">
+            <table class="report-table" id="pnl-table">
+              <thead><tr>
+                <th>Month</th>
+                <th style="text-align:right">Income</th>
+                <th style="text-align:right">Expenses</th>
+                <th style="text-align:right">Net Profit</th>
+              </tr></thead>
+              <tbody id="pnl-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+        <div class="card">
+          <div class="card-header">📈 Last 6 Months — Income vs Expenses</div>
+          <div class="card-body">
+            <canvas id="chart-6months" height="200"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">🔀 Income by Booking Source</div>
+          <div class="card-body" style="display:flex;align-items:center;gap:20px">
+            <canvas id="chart-source" height="200" style="max-width:200px"></canvas>
+            <div id="source-legend" style="flex:1;font-size:13px"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+        <div class="card">
+          <div class="card-header">🚪 Income by Door</div>
+          <div class="card-body">
+            <canvas id="chart-door" height="180"></canvas>
+            <div id="door-income-table" style="margin-top:14px;font-size:13px"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">📅 Occupancy Rate by Door</div>
+          <div class="card-body">
+            <canvas id="chart-occupancy" height="180"></canvas>
+            <div id="occupancy-table" style="margin-top:14px;font-size:13px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ SETTINGS ══════════ -->
+    <div class="page" id="page-settings">
+      <div class="page-header">
+        <h2>Settings</h2>
+      </div>
+      <div class="card" style="max-width:560px">
+        <div class="card-header">🔗 n8n Webhook Integration</div>
+        <div class="card-body">
+          <p style="font-size:13.5px;color:var(--text-muted);margin-bottom:16px">
+            When a new booking is created, the app will automatically send the booking details to this webhook URL.
+          </p>
+          <div class="form-group">
+            <label class="form-label">Webhook URL</label>
+            <input type="url" class="form-control" id="webhook-url" placeholder="https://your-n8n-instance.com/webhook/..."/>
+          </div>
+          <div id="webhook-status" style="font-size:12.5px;margin-top:6px;min-height:18px"></div>
+          <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+            <button class="btn btn-primary" id="save-webhook-btn">Save Webhook URL</button>
+            <button class="btn btn-ghost" id="test-webhook-btn">Test Webhook</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="max-width:560px;margin-top:20px">
+        <div class="card-header">ℹ️ Webhook Payload</div>
+        <div class="card-body">
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px">The following data is sent on every new booking:</p>
+          <pre style="background:#f8fafc;border:1px solid var(--border);border-radius:6px;padding:14px;font-size:12.5px;line-height:1.7;overflow-x:auto">{
+  "guestName":    "Juan dela Cruz",
+  "guestContact": "09171234567",
+  "doorNumber":   1,
+  "checkIn":      "2026-04-10T00:00:00.000Z",
+  "checkOut":     "2026-04-12T00:00:00.000Z",
+  "nights":       2,
+  "guestCount":   3,
+  "totalPrice":   5400,
+  "source":       "Walk-in"
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ GUESTS ══════════ -->
+    <div class="page" id="page-guests">
+      <div class="page-header">
+        <h2>Guest Records</h2>
+        <button class="btn btn-primary" id="new-guest-btn">+ Add Guest</button>
+      </div>
+      <div class="search-bar">
+        <input type="text" class="form-control" id="guest-search" placeholder="Search by name or contact..."/>
+        <button class="btn btn-ghost btn-sm" id="guest-search-btn">Search</button>
+        <button class="btn btn-ghost btn-sm" id="guest-search-clear">Clear</button>
+      </div>
+      <div class="card">
+        <div class="card-body" style="padding:0">
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>Name</th><th>Contact</th><th>Address</th><th>Notes</th><th>Actions</th></tr></thead>
+              <tbody id="guests-body">
+                <tr><td colspan="5"><div class="empty-state"><div class="empty-icon">👤</div><p>No guests found</p></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ══════════ MODALS ══════════ -->
+
+<!-- Booking Modal -->
+<div class="modal-overlay" id="booking-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3 id="booking-modal-title">New Booking</h3>
+      <button class="modal-close" data-close="booking-modal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="booking-id"/>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Guest Name *</label>
+          <input type="text" class="form-control" id="booking-guest-name" placeholder="Full name" autocomplete="off"/>
+          <div id="guest-suggestions" style="position:relative"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contact Number</label>
+          <input type="text" class="form-control" id="booking-guest-contact" placeholder="Phone / Messenger"/>
+        </div>
+      </div>
+      <input type="hidden" id="booking-guest-id"/>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Door *</label>
+          <select class="form-control" id="booking-door">
+            <option value="">-- Select Door --</option>
+            <option value="1">Door 1 — ₱2,700/night (max 6 guests)</option>
+            <option value="2">Door 2 — ₱2,400/night (max 5 guests)</option>
+            <option value="3">Door 3 — ₱1,600/night (max 3 guests)</option>
+            <option value="4">Door 4 — ₱2,800/night (max 8 guests)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Source *</label>
+          <select class="form-control" id="booking-source">
+            <option value="Walk-in">Walk-in</option>
+            <option value="Airbnb">Airbnb</option>
+            <option value="Facebook">Facebook</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">Check-in Date *</label>
+          <input type="date" class="form-control" id="booking-checkin"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Check-out Date *</label>
+          <input type="date" class="form-control" id="booking-checkout"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Number of Guests *</label>
+          <input type="number" class="form-control" id="booking-guests" min="1" max="20" value="1"/>
+        </div>
+      </div>
+      <div id="price-preview-box" style="display:none" class="price-preview">
+        <div class="price-row"><span>Base Rate:</span><span id="prev-base">-</span></div>
+        <div class="price-row"><span>Nights:</span><span id="prev-nights">-</span></div>
+        <div class="price-row"><span>Extra Beds (×₱250/night):</span><span id="prev-extra">-</span></div>
+        <div class="price-row price-total"><span>Total Price:</span><span id="prev-total">-</span></div>
+      </div>
+      <div class="form-group" style="margin-top:12px">
+        <label class="form-label">Status</label>
+        <select class="form-control" id="booking-status">
+          <option value="confirmed">Confirmed</option>
+          <option value="checked-in">Checked-in</option>
+          <option value="checked-out">Checked-out</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-control" id="booking-notes" rows="2" placeholder="Any special notes..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" data-close="booking-modal">Cancel</button>
+      <button class="btn btn-primary" id="save-booking-btn">Save Booking</button>
+    </div>
+  </div>
+</div>
+
+<!-- Transaction Modal -->
+<div class="modal-overlay" id="transaction-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="transaction-modal-title">Add Transaction</h3>
+      <button class="modal-close" data-close="transaction-modal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="transaction-id"/>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Type *</label>
+          <select class="form-control" id="transaction-type">
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date *</label>
+          <input type="date" class="form-control" id="transaction-date"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Category *</label>
+        <input type="text" class="form-control" id="transaction-category" list="category-list" placeholder="e.g. Room Rental, Utilities, Repairs..."/>
+        <datalist id="category-list">
+          <option value="Room Rental"/>
+          <option value="Cleaning Fee"/>
+          <option value="Utilities - Electric"/>
+          <option value="Utilities - Water"/>
+          <option value="Internet"/>
+          <option value="Repairs &amp; Maintenance"/>
+          <option value="Supplies"/>
+          <option value="Laundry"/>
+          <option value="Other Income"/>
+          <option value="Other Expense"/>
+        </datalist>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Amount (₱) *</label>
+        <input type="number" class="form-control" id="transaction-amount" min="0" step="0.01" placeholder="0.00"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <input type="text" class="form-control" id="transaction-desc" placeholder="Optional details..."/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" data-close="transaction-modal">Cancel</button>
+      <button class="btn btn-primary" id="save-transaction-btn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Guest Modal -->
+<div class="modal-overlay" id="guest-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="guest-modal-title">Add Guest</h3>
+      <button class="modal-close" data-close="guest-modal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="guest-id"/>
+      <div class="form-group">
+        <label class="form-label">Name *</label>
+        <input type="text" class="form-control" id="guest-name" placeholder="Full name"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Contact</label>
+        <input type="text" class="form-control" id="guest-contact" placeholder="Phone / Messenger / Email"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Address</label>
+        <input type="text" class="form-control" id="guest-address" placeholder="Home address"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-control" id="guest-notes" rows="2" placeholder="Any notes about this guest..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" data-close="guest-modal">Cancel</button>
+      <button class="btn btn-primary" id="save-guest-btn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Guest History Modal -->
+<div class="modal-overlay" id="guest-history-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3 id="guest-history-title">Booking History</h3>
+      <button class="modal-close" data-close="guest-history-modal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="guest-history-info" style="margin-bottom:14px;padding:12px;background:#f8fafc;border-radius:8px;font-size:13.5px"></div>
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>Door</th><th>Check-in</th><th>Check-out</th><th>Nights</th><th>Guests</th><th>Total</th><th>Source</th><th>Status</th></tr></thead>
+          <tbody id="guest-history-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" data-close="guest-history-modal">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Annual Report Modal -->
+<div class="modal-overlay" id="annual-report-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3 id="annual-report-title">Annual Report</h3>
+      <button class="modal-close" data-close="annual-report-modal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="table-wrapper">
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th style="text-align:right">Income</th>
+              <th style="text-align:right">Expenses</th>
+              <th style="text-align:right">Net Profit</th>
+            </tr>
+          </thead>
+          <tbody id="annual-report-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" data-close="annual-report-modal">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Dialog -->
+<div id="confirm-overlay">
+  <div class="confirm-box">
+    <h3 id="confirm-title">Are you sure?</h3>
+    <p id="confirm-message">This action cannot be undone.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" id="confirm-cancel">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
