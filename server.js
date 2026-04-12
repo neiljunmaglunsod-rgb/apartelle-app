@@ -16,9 +16,6 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/jj-apa
 app.use(cors());
 app.use(express.json());
 
-// Static files first (before auth so CSS/JS loads on login page)
-app.use(express.static(path.join(__dirname, 'public')));
-
 // Session middleware
 app.use(session({
   secret: process.env.SESSION_SECRET || 'jj-apartelle-secret-key',
@@ -28,18 +25,25 @@ app.use(session({
   cookie: { maxAge: 1000 * 60 * 60 * 24 }
 }));
 
+// Allow public assets (CSS, JS, images, login page) without auth
+app.use('/login.html', express.static(path.join(__dirname, 'public/login.html')));
+app.use('/style.css', express.static(path.join(__dirname, 'public/style.css')));
+app.use('/app.js', express.static(path.join(__dirname, 'public/app.js')));
+app.use('/images', express.static(path.join(__dirname, 'public/images')));
+app.use('/image', express.static(path.join(__dirname, 'public/image')));
+
 // Auth middleware
 const requireAuth = (req, res, next) => {
-  const publicPaths = ['/login.html', '/api/auth/login'];
-  if (publicPaths.includes(req.path) || req.session.user) return next();
+  if (req.session.user) return next();
   if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Unauthorized' });
-  res.redirect('/login.html');
+  return res.redirect('/login.html');
 };
 
-app.use(requireAuth);
-
-// Routes
+// Auth routes (public)
 app.use('/api/auth', require('./routes/auth'));
+
+// Protected routes
+app.use(requireAuth);
 app.use('/api/guests', require('./routes/guests'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/transactions', require('./routes/transactions'));
@@ -121,14 +125,10 @@ app.get('/api/dashboard', async (req, res) => {
   }
 });
 
-// Serve frontend
+// Serve frontend (protected)
 app.get('*', (req, res) => {
-  if (!req.session.user) {
-    return res.redirect('/login.html');
-  }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-
 
 mongoose.connect(MONGODB_URI, { family: 4 })
   .then(() => {
