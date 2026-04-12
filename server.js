@@ -135,7 +135,7 @@ app.get('/api/dashboard', async (req, res) => {
 
 // Serve frontend
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
 mongoose.connect(MONGODB_URI, { family: 4 })
