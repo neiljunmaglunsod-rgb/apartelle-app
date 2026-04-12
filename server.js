@@ -7,7 +7,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const session = require('express-session');
-const { MongoStore } = require('connect-mongo');
+const MongoStore = require('connect-mongo');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,13 +16,16 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/jj-apa
 app.use(cors());
 app.use(express.json());
 
+// Static files first (before auth so CSS/JS loads on login page)
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Session middleware
 app.use(session({
   secret: process.env.SESSION_SECRET || 'jj-apartelle-secret-key',
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: MONGODB_URI }),
-  cookie: { maxAge: 1000 * 60 * 60 * 24 } // 24 hours
+  cookie: { maxAge: 1000 * 60 * 60 * 24 }
 }));
 
 // Auth middleware
@@ -34,7 +37,6 @@ const requireAuth = (req, res, next) => {
 };
 
 app.use(requireAuth);
-app.use(express.static(path.join(__dirname, 'public')));
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
