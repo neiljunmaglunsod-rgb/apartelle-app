@@ -12,6 +12,10 @@ const MongoStore = require('connect-mongo').default;
 const app = express();
 const PORT = process.env.PORT || 3000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/jj-apartelle';
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Required for Render (and other reverse proxies) to trust forwarded headers
+if (isProduction) app.set('trust proxy', 1);
 
 app.use(cors());
 app.use(express.json());
@@ -22,7 +26,11 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({ mongoUrl: MONGODB_URI }),
-  cookie: { maxAge: 1000 * 60 * 60 * 24 }
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 24,  // 24 hours
+    secure: isProduction,           // HTTPS only on Render
+    sameSite: isProduction ? 'none' : 'lax'
+  }
 }));
 
 // Auth middleware
