@@ -25,25 +25,25 @@ app.use(session({
   cookie: { maxAge: 1000 * 60 * 60 * 24 }
 }));
 
-// Allow public assets (CSS, JS, images, login page) without auth
-app.use('/login.html', express.static(path.join(__dirname, 'public/login.html')));
-app.use('/style.css', express.static(path.join(__dirname, 'public/style.css')));
-app.use('/app.js', express.static(path.join(__dirname, 'public/app.js')));
-app.use('/images', express.static(path.join(__dirname, 'public/images')));
-app.use('/image', express.static(path.join(__dirname, 'public/image')));
-
 // Auth middleware
 const requireAuth = (req, res, next) => {
+  const publicPaths = ['/login.html', '/style.css', '/app.js', '/images', '/image'];
+  if (publicPaths.some(p => req.path === p || req.path.startsWith(p + '/'))) return next();
   if (req.session.user) return next();
   if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Unauthorized' });
   return res.redirect('/login.html');
 };
 
-// Auth routes (public)
+// Auth routes (always public)
 app.use('/api/auth', require('./routes/auth'));
 
-// Protected routes
+// Apply auth check
 app.use(requireAuth);
+
+// Serve all static files (CSS, JS, images, login.html, index.html)
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Protected API routes
 app.use('/api/guests', require('./routes/guests'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/transactions', require('./routes/transactions'));
@@ -125,7 +125,7 @@ app.get('/api/dashboard', async (req, res) => {
   }
 });
 
-// Serve frontend (protected)
+// Serve frontend
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
