@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm start:*)",
+      "Bash(curl -s http://localhost:3000/api/rooms)",
+      "Bash(powershell -Command \"Stop-Process -Id 3744 -Force -ErrorAction SilentlyContinue; Write-Host 'Done'\")"
+    ]
+  }
+}

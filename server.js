@@ -1,10 +1,13 @@
 require('dotenv').config();
 const dns = require('dns');
 dns.setServers(['8.8.8.8', '8.8.4.4']);
+dns.setDefaultResultOrder('ipv4first');
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
+const session = require('express-session');
+const { MongoStore } = require('connect-mongo');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,9 +15,29 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/jj-apa
 
 app.use(cors());
 app.use(express.json());
+
+// Session middleware
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'jj-apartelle-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({ mongoUrl: MONGODB_URI }),
+  cookie: { maxAge: 1000 * 60 * 60 * 24 } // 24 hours
+}));
+
+// Auth middleware
+const requireAuth = (req, res, next) => {
+  const publicPaths = ['/login.html', '/api/auth/login'];
+  if (publicPaths.includes(req.path) || req.session.user) return next();
+  if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Unauthorized' });
+  res.redirect('/login.html');
+};
+
+app.use(requireAuth);
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Routes
+app.use('/api/auth', require('./routes/auth'));
 app.use('/api/guests', require('./routes/guests'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/transactions', require('./routes/transactions'));
@@ -37,14 +60,12 @@ app.get('/api/dashboard', async (req, res) => {
     const Transaction = require('./models/Transaction');
     const Guest = require('./models/Guest');
 
-    // Use UTC midnight so date comparisons match how MongoDB stores dates
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
     const monthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
     const monthEnd = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1));
-
     const daysInMonth = new Date(today.getUTCFullYear(), today.getUTCMonth() + 1, 0).getUTCDate();
 
     const [activeBookings, checkInBookings, checkOutBookings, monthIncome, monthExpense, totalGuests, monthOccupancy] = await Promise.all([
