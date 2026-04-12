@@ -5,14 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>J&J Apartelle</title>
   <link rel="stylesheet" href="style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
 <!-- SIDEBAR -->
 <aside id="sidebar">
-  <div class="sidebar-header">
-    <div class="brand">J&amp;J Apartelle</div>
-    <div class="sub">Management System</div>
+  <div class="sidebar-logo-wrap">
+    <img src="images/jj-logo.png" alt="J&amp;J Apartelle Logo" class="sidebar-logo"
+         onerror="this.style.display='none';document.getElementById('sidebar-text-brand').style.display='block'"/>
+    <div id="sidebar-text-brand" style="display:none">
+      <div class="sidebar-logo-text">J&amp;J Apartelle</div>
+    </div>
+    <div class="sidebar-logo-sub">Management System</div>
   </div>
   <nav>
     <a class="nav-link active" data-page="dashboard">
@@ -24,11 +31,19 @@
     <a class="nav-link" data-page="bookings">
       <span class="icon">📋</span> Bookings
     </a>
+    <a class="nav-link" data-page="guests">
+      <span class="icon">👤</span> Guests
+    </a>
+    <div class="nav-divider"></div>
     <a class="nav-link" data-page="finances">
       <span class="icon">💰</span> Income &amp; Expenses
     </a>
-    <a class="nav-link" data-page="guests">
-      <span class="icon">👤</span> Guests
+    <a class="nav-link" data-page="reports">
+      <span class="icon">✨</span> Reports
+    </a>
+    <div class="nav-divider"></div>
+    <a class="nav-link" data-page="settings">
+      <span class="icon">⚙️</span> Settings
     </a>
   </nav>
   <div class="sidebar-footer">J&amp;J Apartelle &copy; 2026</div>
@@ -45,30 +60,87 @@
 
     <!-- ══════════ DASHBOARD ══════════ -->
     <div class="page active" id="page-dashboard">
-      <div class="stats-grid" id="dashboard-stats">
-        <div class="stat-card"><div class="stat-icon blue">🏠</div><div class="stat-info"><div class="stat-value" id="stat-available">-</div><div class="stat-label">Available Today</div></div></div>
+
+      <!-- Stats Row -->
+      <div class="stats-grid">
+        <div class="stat-card gold-accent"><div class="stat-icon gold">🏠</div><div class="stat-info"><div class="stat-value" id="stat-available">-</div><div class="stat-label">Available Today</div></div></div>
         <div class="stat-card"><div class="stat-icon red">🔴</div><div class="stat-info"><div class="stat-value" id="stat-occupied">-</div><div class="stat-label">Occupied Today</div></div></div>
-        <div class="stat-card"><div class="stat-icon orange">📥</div><div class="stat-info"><div class="stat-value" id="stat-checkins">-</div><div class="stat-label">Check-ins Today</div></div></div>
-        <div class="stat-card"><div class="stat-icon purple">📤</div><div class="stat-info"><div class="stat-value" id="stat-checkouts">-</div><div class="stat-label">Check-outs Today</div></div></div>
-        <div class="stat-card"><div class="stat-icon green">💵</div><div class="stat-info"><div class="stat-value" id="stat-income">-</div><div class="stat-label">Income This Month</div></div></div>
-        <div class="stat-card"><div class="stat-icon red">💸</div><div class="stat-info"><div class="stat-value" id="stat-expense">-</div><div class="stat-label">Expenses This Month</div></div></div>
-        <div class="stat-card"><div class="stat-icon blue">📊</div><div class="stat-info"><div class="stat-value" id="stat-net">-</div><div class="stat-label">Net This Month</div></div></div>
-        <div class="stat-card"><div class="stat-icon purple">👥</div><div class="stat-info"><div class="stat-value" id="stat-guests">-</div><div class="stat-label">Total Guests</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">📥</div><div class="stat-info"><div class="stat-value" id="stat-checkins">-</div><div class="stat-label">Check-ins Today</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">📤</div><div class="stat-info"><div class="stat-value" id="stat-checkouts">-</div><div class="stat-label">Check-outs Today</div></div></div>
+        <div class="stat-card gold-accent"><div class="stat-icon gold">💵</div><div class="stat-info"><div class="stat-value income-val" id="stat-income">-</div><div class="stat-label">Income This Month</div></div></div>
+        <div class="stat-card"><div class="stat-icon red">💸</div><div class="stat-info"><div class="stat-value expense-val" id="stat-expense">-</div><div class="stat-label">Expenses This Month</div></div></div>
+        <div class="stat-card gold-accent"><div class="stat-icon gold">📊</div><div class="stat-info"><div class="stat-value" id="stat-net">-</div><div class="stat-label">Net This Month</div></div></div>
+        <div class="stat-card"><div class="stat-icon black">👥</div><div class="stat-info"><div class="stat-value" id="stat-guests">-</div><div class="stat-label">Total Guests</div></div></div>
       </div>
 
+      <!-- Door Status Cards -->
       <div class="rooms-grid" id="rooms-status"></div>
 
+      <!-- Quick Reports + Today's Activity -->
+      <div class="dashboard-bottom-grid">
+
+        <!-- Quick Reports Summary -->
+        <div class="card">
+          <div class="card-header card-header-gold">✨ This Month's Summary</div>
+          <div class="card-body">
+            <div class="report-summary-row">
+              <div style="flex:1">
+                <div class="rsrow-label">Income</div>
+                <div class="rsrow-value gold" id="qs-income">₱0</div>
+                <div class="progress-bar-wrap"><div class="progress-bar-fill gold" id="qs-income-bar" style="width:0%"></div></div>
+              </div>
+            </div>
+            <div class="report-summary-row" style="margin-top:14px">
+              <div style="flex:1">
+                <div class="rsrow-label">Expenses</div>
+                <div class="rsrow-value red" id="qs-expense">₱0</div>
+                <div class="progress-bar-wrap"><div class="progress-bar-fill red" id="qs-expense-bar" style="width:0%"></div></div>
+              </div>
+            </div>
+            <div class="report-summary-row" style="margin-top:14px">
+              <div style="flex:1">
+                <div class="rsrow-label">Net Profit</div>
+                <div class="rsrow-value green" id="qs-net">₱0</div>
+                <div class="progress-bar-wrap"><div class="progress-bar-fill green" id="qs-net-bar" style="width:0%"></div></div>
+              </div>
+            </div>
+            <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+              <div class="rsrow-label" style="margin-bottom:10px">Occupancy Rate (This Month)</div>
+              <div id="qs-occupancy-bars"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Today's Activity -->
+        <div class="card">
+          <div class="card-header card-header-gold">📅 Today's Activity</div>
+          <div class="card-body" style="padding:14px 16px">
+            <div style="font-size:11.5px;font-weight:700;color:var(--success);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Check-ins</div>
+            <div class="activity-list" id="today-checkins-list">
+              <div class="activity-empty">No check-ins today</div>
+            </div>
+            <div style="font-size:11.5px;font-weight:700;color:var(--danger);text-transform:uppercase;letter-spacing:0.05em;margin:14px 0 8px">Check-outs</div>
+            <div class="activity-list" id="today-checkouts-list">
+              <div class="activity-empty">No check-outs today</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Recent Bookings -->
       <div class="card">
         <div class="card-header">📋 Recent Bookings</div>
         <div class="card-body" style="padding:0">
           <div class="table-wrapper">
-            <table id="recent-bookings-table">
+            <table>
               <thead><tr><th>Guest</th><th>Door</th><th>Check-in</th><th>Check-out</th><th>Total</th><th>Source</th><th>Status</th></tr></thead>
-              <tbody id="recent-bookings-body"><tr><td colspan="7" class="empty-state"><div class="empty-icon">📭</div><p>No bookings yet</p></td></tr></tbody>
+              <tbody id="recent-bookings-body"><tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📭</div><p>No bookings yet</p></div></td></tr></tbody>
             </table>
           </div>
         </div>
       </div>
+
     </div>
 
     <!-- ══════════ CALENDAR ══════════ -->
@@ -149,40 +221,217 @@
     <div class="page" id="page-finances">
       <div class="page-header">
         <h2>Income &amp; Expenses</h2>
-        <button class="btn btn-primary" id="new-transaction-btn">+ Add Transaction</button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-success btn-sm" id="pnl-pdf-btn">⬇ P&amp;L Report PDF</button>
+          <button class="btn btn-primary" id="new-transaction-btn">+ Add Transaction</button>
+        </div>
       </div>
 
-      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
-        <select class="form-control" id="finance-month" style="max-width:140px">
-          <option value="1">January</option><option value="2">February</option>
-          <option value="3">March</option><option value="4">April</option>
-          <option value="5">May</option><option value="6">June</option>
-          <option value="7">July</option><option value="8">August</option>
-          <option value="9">September</option><option value="10">October</option>
-          <option value="11">November</option><option value="12">December</option>
-        </select>
-        <input type="number" class="form-control" id="finance-year" style="max-width:100px" value="2026"/>
-        <button class="btn btn-ghost btn-sm" id="finance-filter-btn">View</button>
-        <button class="btn btn-info btn-sm" id="annual-report-btn">Annual Report</button>
+      <!-- Tab Navigation -->
+      <div class="fin-tabs">
+        <button class="fin-tab active" data-fintab="transactions">💳 Transactions</button>
+        <button class="fin-tab" data-fintab="stafffees">🧹 Staff Fees</button>
       </div>
 
-      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
-        <div class="stat-card"><div class="stat-icon green">💵</div><div class="stat-info"><div class="stat-value income-val" id="fin-income">₱0</div><div class="stat-label">Total Income</div></div></div>
-        <div class="stat-card"><div class="stat-icon red">💸</div><div class="stat-info"><div class="stat-value expense-val" id="fin-expense">₱0</div><div class="stat-label">Total Expenses</div></div></div>
-        <div class="stat-card"><div class="stat-icon blue">📊</div><div class="stat-info"><div class="stat-value" id="fin-net">₱0</div><div class="stat-label">Net Profit</div></div></div>
+      <!-- ── TRANSACTIONS PANEL ── -->
+      <div id="fin-panel-transactions" class="fin-panel">
+        <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+          <select class="form-control" id="finance-month" style="max-width:140px">
+            <option value="1">January</option><option value="2">February</option>
+            <option value="3">March</option><option value="4">April</option>
+            <option value="5">May</option><option value="6">June</option>
+            <option value="7">July</option><option value="8">August</option>
+            <option value="9">September</option><option value="10">October</option>
+            <option value="11">November</option><option value="12">December</option>
+          </select>
+          <input type="number" class="form-control" id="finance-year" style="max-width:100px" value="2026"/>
+          <button class="btn btn-ghost btn-sm" id="finance-filter-btn">View</button>
+          <button class="btn btn-info btn-sm" id="annual-report-btn">Annual Report</button>
+        </div>
+
+        <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+          <div class="stat-card"><div class="stat-icon green">💵</div><div class="stat-info"><div class="stat-value income-val" id="fin-income">₱0</div><div class="stat-label">Total Income</div></div></div>
+          <div class="stat-card"><div class="stat-icon red">💸</div><div class="stat-info"><div class="stat-value expense-val" id="fin-expense">₱0</div><div class="stat-label">Total Expenses</div></div></div>
+          <div class="stat-card"><div class="stat-icon blue">📊</div><div class="stat-info"><div class="stat-value" id="fin-net">₱0</div><div class="stat-label">Net Profit</div></div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">💳 Transactions</div>
+          <div class="card-body" style="padding:0">
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Description</th><th>Amount</th><th>Actions</th></tr></thead>
+                <tbody id="transactions-body">
+                  <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📭</div><p>No transactions found</p></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div><!-- /fin-panel-transactions -->
+
+      <!-- ── STAFF FEES PANEL ── -->
+      <div id="fin-panel-stafffees" class="fin-panel" style="display:none">
+
+        <!-- Filters -->
+        <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+          <select class="form-control" id="sf-door" style="max-width:140px">
+            <option value="">All Doors</option>
+            <option value="1">Door 1</option>
+            <option value="2">Door 2</option>
+            <option value="3">Door 3</option>
+            <option value="4">Door 4</option>
+          </select>
+          <input type="date" class="form-control" id="sf-from" style="max-width:160px" title="From date"/>
+          <input type="date" class="form-control" id="sf-to"   style="max-width:160px" title="To date"/>
+          <button class="btn btn-ghost btn-sm" id="sf-filter-btn">Filter</button>
+          <button class="btn btn-ghost btn-sm" id="sf-clear-btn">Clear</button>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+          <div class="stat-card"><div class="stat-icon gold">🧾</div><div class="stat-info"><div class="stat-value expense-val" id="sf-total">₱0</div><div class="stat-label">Total Staff Fees</div></div></div>
+          <div class="stat-card"><div class="stat-icon blue">🧹</div><div class="stat-info"><div class="stat-value expense-val" id="sf-cleaning">₱0</div><div class="stat-label">Cleaning Total</div></div></div>
+          <div class="stat-card"><div class="stat-icon green">👕</div><div class="stat-info"><div class="stat-value expense-val" id="sf-laundry">₱0</div><div class="stat-label">Laundry Total</div></div></div>
+        </div>
+
+        <!-- Per-Door Breakdown -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header">🚪 Per-Door Breakdown</div>
+          <div class="card-body" style="padding:0">
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Door</th><th style="text-align:right">Cleaning</th><th style="text-align:right">Laundry</th><th style="text-align:right">Total</th><th style="text-align:right">Checkouts</th></tr></thead>
+                <tbody id="sf-door-body">
+                  <tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📭</div><p>No data</p></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Full Fee Log -->
+        <div class="card">
+          <div class="card-header">📋 Fee Log</div>
+          <div class="card-body" style="padding:0">
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Date</th><th>Door</th><th>Guest</th><th>Category</th><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
+                <tbody id="sf-log-body">
+                  <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📭</div><p>No fee records</p></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /fin-panel-stafffees -->
+    </div>
+
+    <!-- ══════════ REPORTS ══════════ -->
+    <div class="page" id="page-reports">
+      <div class="page-header">
+        <h2>Financial Reports</h2>
+        <div style="display:flex;gap:10px;align-items:center">
+          <select class="form-control" id="report-year" style="max-width:110px"></select>
+          <button class="btn btn-primary" id="load-reports-btn">Load</button>
+        </div>
       </div>
 
-      <div class="card">
-        <div class="card-header">💳 Transactions</div>
+      <!-- P&L Summary -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header">📋 Monthly Profit &amp; Loss Summary</div>
         <div class="card-body" style="padding:0">
           <div class="table-wrapper">
-            <table>
-              <thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Description</th><th>Amount</th><th>Actions</th></tr></thead>
-              <tbody id="transactions-body">
-                <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📭</div><p>No transactions found</p></div></td></tr>
-              </tbody>
+            <table class="report-table" id="pnl-table">
+              <thead><tr>
+                <th>Month</th>
+                <th style="text-align:right">Income</th>
+                <th style="text-align:right">Expenses</th>
+                <th style="text-align:right">Net Profit</th>
+              </tr></thead>
+              <tbody id="pnl-body"></tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- Charts row -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+        <!-- Bar chart -->
+        <div class="card">
+          <div class="card-header">📈 Last 6 Months — Income vs Expenses</div>
+          <div class="card-body">
+            <canvas id="chart-6months" height="200"></canvas>
+          </div>
+        </div>
+        <!-- Source pie -->
+        <div class="card">
+          <div class="card-header">🔀 Income by Booking Source</div>
+          <div class="card-body" style="display:flex;align-items:center;gap:20px">
+            <canvas id="chart-source" height="200" style="max-width:200px"></canvas>
+            <div id="source-legend" style="flex:1;font-size:13px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Door income + occupancy -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+        <div class="card">
+          <div class="card-header">🚪 Income by Door</div>
+          <div class="card-body">
+            <canvas id="chart-door" height="180"></canvas>
+            <div id="door-income-table" style="margin-top:14px;font-size:13px"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">📅 Occupancy Rate by Door</div>
+          <div class="card-body">
+            <canvas id="chart-occupancy" height="180"></canvas>
+            <div id="occupancy-table" style="margin-top:14px;font-size:13px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ SETTINGS ══════════ -->
+    <div class="page" id="page-settings">
+      <div class="page-header">
+        <h2>Settings</h2>
+      </div>
+      <div class="card" style="max-width:560px">
+        <div class="card-header">🔗 n8n Webhook Integration</div>
+        <div class="card-body">
+          <p style="font-size:13.5px;color:var(--text-muted);margin-bottom:16px">
+            When a new booking is created, the app will automatically send the booking details to this webhook URL.
+          </p>
+          <div class="form-group">
+            <label class="form-label">Webhook URL</label>
+            <input type="url" class="form-control" id="webhook-url" placeholder="https://your-n8n-instance.com/webhook/..."/>
+          </div>
+          <div id="webhook-status" style="font-size:12.5px;margin-top:6px;min-height:18px"></div>
+          <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+            <button class="btn btn-primary" id="save-webhook-btn">Save Webhook URL</button>
+            <button class="btn btn-ghost" id="test-webhook-btn">Test Webhook</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="max-width:560px;margin-top:20px">
+        <div class="card-header">ℹ️ Webhook Payload</div>
+        <div class="card-body">
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px">The following data is sent on every new booking:</p>
+          <pre style="background:#f8fafc;border:1px solid var(--border);border-radius:6px;padding:14px;font-size:12.5px;line-height:1.7;overflow-x:auto">{
+  "guestName":    "Juan dela Cruz",
+  "guestContact": "09171234567",
+  "doorNumber":   1,
+  "checkIn":      "2026-04-10T00:00:00.000Z",
+  "checkOut":     "2026-04-12T00:00:00.000Z",
+  "nights":       2,
+  "guestCount":   3,
+  "totalPrice":   5400,
+  "source":       "Walk-in"
+}</pre>
         </div>
       </div>
     </div>

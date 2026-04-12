@@ -3,6 +3,40 @@ const router = express.Router();
 const Booking = require('../models/Booking');
 const Guest = require('../models/Guest');
 const Transaction = require('../models/Transaction');
+const Settings = require('../models/Settings');
+const https = require('https');
+const http = require('http');
+
+async function fireWebhook(booking) {
+  try {
+    const setting = await Settings.findOne({ key: 'webhookUrl' });
+    if (!setting || !setting.value) return;
+    const url = new URL(setting.value);
+    const payload = JSON.stringify({
+      guestName: booking.guestName,
+      guestContact: booking.guestContact || '',
+      doorNumber: booking.doorNumber,
+      checkIn: booking.checkIn,
+      checkOut: booking.checkOut,
+      nights: booking.nights,
+      guestCount: booking.guestCount,
+      totalPrice: booking.totalPrice,
+      source: booking.source
+    });
+    const options = {
+      hostname: url.hostname,
+      port: url.port || (url.protocol === 'https:' ? 443 : 80),
+      path: url.pathname + url.search,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
+    };
+    const lib = url.protocol === 'https:' ? https : http;
+    const req = lib.request(options);
+    req.on('error', () => {});
+    req.write(payload);
+    req.end();
+  } catch {}
+}
 
 // GET all bookings (with optional filters)
 router.get('/', async (req, res) => {
@@ -119,6 +153,9 @@ router.post('/', async (req, res) => {
     });
     await transaction.save();
 
+    // Fire n8n webhook (non-blocking)
+    fireWebhook(booking);
+
     res.status(201).json({ booking, transaction });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -167,6 +204,79 @@ router.delete('/:id', async (req, res) => {
     await Booking.findByIdAndDelete(req.params.id);
     await Transaction.deleteOne({ bookingId: req.params.id });
     res.json({ message: 'Booking deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Laundry loads per door
+const LAUNDRY_LOADS = { 1: 2, 2: 1, 3: 1, 4: 2 };
+const LAUNDRY_RATE  = 200;
+const CLEANING_FEE  = 300;
+
+// POST checkout — marks checked-out and auto-posts cleaning + laundry fees
+router.post('/:id/checkout', async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    booking.status = 'checked-out';
+    await booking.save();
+
+    // Guard: skip if auto-fees already exist for this booking
+    const existing = await Transaction.findOne({
+      bookingId: booking._id,
+      description: { $regex: /^Auto:/ }
+    });
+    if (existing) {
+      return res.json({ booking, cleaningFeeId: null, laundryFeeId: null, skipped: true });
+    }
+
+    const door   = booking.doorNumber;
+    const loads  = LAUNDRY_LOADS[door] || 1;
+    const coDate = booking.checkOut;
+
+    const [cleaningFee, laundryFee] = await Promise.all([
+      new Transaction({
+        type: 'expense',
+        category: 'Cleaning Fee',
+        amount: CLEANING_FEE,
+        date: coDate,
+        description: `Auto: cleaning fee for door ${door}`,
+        bookingId: booking._id
+      }).save(),
+      new Transaction({
+        type: 'expense',
+        category: 'Laundry',
+        amount: loads * LAUNDRY_RATE,
+        date: coDate,
+        description: `Auto: laundry for door${door} (${loads} load${loads > 1 ? 's' : ''} @₱200)`,
+        bookingId: booking._id
+      }).save()
+    ]);
+
+    res.json({ booking, cleaningFeeId: cleaningFee._id, laundryFeeId: laundryFee._id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST undo-checkout — reverts to checked-in and deletes auto-posted fees
+router.post('/:id/undo-checkout', async (req, res) => {
+  try {
+    const { cleaningFeeId, laundryFeeId } = req.body;
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    booking.status = 'checked-in';
+    await booking.save();
+
+    await Promise.all([
+      cleaningFeeId ? Transaction.findByIdAndDelete(cleaningFeeId) : null,
+      laundryFeeId  ? Transaction.findByIdAndDelete(laundryFeeId)  : null
+    ]);
+
+    res.json({ booking });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
