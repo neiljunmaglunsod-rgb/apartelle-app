@@ -27,19 +27,22 @@ const bookingSchema = new mongoose.Schema({
   amountPaid: { type: Number, default: 0 }
 }, { timestamps: true });
 
-bookingSchema.pre('save', function (next) {
+bookingSchema.pre('save', async function () {
   const config = ROOM_CONFIG[this.doorNumber];
-  if (!config) return next(new Error('Invalid door number'));
+  if (!config) throw new Error('Invalid door number');
 
   const msPerDay = 1000 * 60 * 60 * 24;
   this.nights = Math.round((new Date(this.checkOut) - new Date(this.checkIn)) / msPerDay);
-  if (this.nights < 1) return next(new Error('Check-out must be after check-in'));
+  if (this.nights < 1) throw new Error('Check-out must be after check-in');
 
-  this.baseRate = config.rate;
+  const Settings = require('./Settings');
+  const saved = await Settings.findOne({ key: `door_${this.doorNumber}_rate` });
+  const rate = saved ? Number(saved.value) : config.rate;
+
+  this.baseRate = rate;
   this.extraBeds = Math.max(0, this.guestCount - config.maxGuests);
   this.extraCharge = this.extraBeds * EXTRA_BED_CHARGE * this.nights;
-  this.totalPrice = (config.rate * this.nights) + this.extraCharge;
-  next();
+  this.totalPrice = (rate * this.nights) + this.extraCharge;
 });
 
 module.exports = mongoose.model('Booking', bookingSchema);

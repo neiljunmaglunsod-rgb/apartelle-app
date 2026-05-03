@@ -79,22 +79,31 @@ router.get('/availability', async (req, res) => {
 });
 
 // GET price preview
-router.get('/price-preview', (req, res) => {
-  const { door, checkIn, checkOut, guestCount } = req.query;
-  const ROOM_CONFIG = { 1: { rate: 2700, maxGuests: 6 }, 2: { rate: 2400, maxGuests: 5 }, 3: { rate: 1600, maxGuests: 3 }, 4: { rate: 2800, maxGuests: 8 } };
-  const config = ROOM_CONFIG[parseInt(door)];
-  if (!config) return res.status(400).json({ error: 'Invalid door' });
+router.get('/price-preview', async (req, res) => {
+  try {
+    const { door, checkIn, checkOut, guestCount } = req.query;
+    const ROOM_DEFAULTS = { 1: { rate: 2700, maxGuests: 6 }, 2: { rate: 2400, maxGuests: 5 }, 3: { rate: 1600, maxGuests: 3 }, 4: { rate: 2800, maxGuests: 8 } };
+    const doorNum = parseInt(door);
+    const config = ROOM_DEFAULTS[doorNum];
+    if (!config) return res.status(400).json({ error: 'Invalid door' });
 
-  const msPerDay = 1000 * 60 * 60 * 24;
-  const nights = Math.round((new Date(checkOut) - new Date(checkIn)) / msPerDay);
-  if (nights < 1) return res.status(400).json({ error: 'Invalid dates' });
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const nights = Math.round((new Date(checkOut) - new Date(checkIn)) / msPerDay);
+    if (nights < 1) return res.status(400).json({ error: 'Invalid dates' });
 
-  const gc = parseInt(guestCount);
-  const extraBeds = Math.max(0, gc - config.maxGuests);
-  const extraCharge = extraBeds * 250 * nights;
-  const totalPrice = config.rate * nights + extraCharge;
+    const Settings = require('../models/Settings');
+    const saved = await Settings.findOne({ key: `door_${doorNum}_rate` });
+    const rate = saved ? Number(saved.value) : config.rate;
 
-  res.json({ nights, baseRate: config.rate, extraBeds, extraCharge, totalPrice, maxGuests: config.maxGuests });
+    const gc = parseInt(guestCount);
+    const extraBeds = Math.max(0, gc - config.maxGuests);
+    const extraCharge = extraBeds * 250 * nights;
+    const totalPrice = rate * nights + extraCharge;
+
+    res.json({ nights, baseRate: rate, extraBeds, extraCharge, totalPrice, maxGuests: config.maxGuests });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET single booking

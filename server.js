@@ -57,14 +57,48 @@ app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/transactions', require('./routes/transactions'));
 app.use('/api/settings', require('./routes/settings'));
 
-// Room config endpoint
-app.get('/api/rooms', (req, res) => {
-  res.json([
-    { door: 1, rate: 2700, maxGuests: 6, extraBedCharge: 250 },
-    { door: 2, rate: 2400, maxGuests: 5, extraBedCharge: 250 },
-    { door: 3, rate: 1600, maxGuests: 3, extraBedCharge: 250 },
-    { door: 4, rate: 2800, maxGuests: 8, extraBedCharge: 250 }
-  ]);
+// Room config endpoints
+const ROOM_DEFAULTS = {
+  1: { rate: 2700, maxGuests: 6 },
+  2: { rate: 2400, maxGuests: 5 },
+  3: { rate: 1600, maxGuests: 3 },
+  4: { rate: 2800, maxGuests: 8 }
+};
+
+app.get('/api/rooms', async (req, res) => {
+  try {
+    const Settings = require('./models/Settings');
+    const saved = await Settings.find({ key: /^door_\d_rate$/ });
+    const rateMap = {};
+    saved.forEach(s => { rateMap[s.key] = Number(s.value); });
+    const rooms = [1, 2, 3, 4].map(d => ({
+      door: d,
+      rate: rateMap[`door_${d}_rate`] ?? ROOM_DEFAULTS[d].rate,
+      maxGuests: ROOM_DEFAULTS[d].maxGuests,
+      extraBedCharge: 250
+    }));
+    res.json(rooms);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/rooms/:door', async (req, res) => {
+  try {
+    const door = parseInt(req.params.door);
+    const rate = Number(req.body.rate);
+    if (![1, 2, 3, 4].includes(door)) return res.status(400).json({ error: 'Invalid door' });
+    if (!Number.isFinite(rate) || rate <= 0) return res.status(400).json({ error: 'Rate must be a positive number' });
+    const Settings = require('./models/Settings');
+    await Settings.findOneAndUpdate(
+      { key: `door_${door}_rate` },
+      { value: String(rate) },
+      { upsert: true }
+    );
+    res.json({ door, rate, maxGuests: ROOM_DEFAULTS[door].maxGuests });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Dashboard stats

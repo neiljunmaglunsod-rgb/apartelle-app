@@ -4,7 +4,7 @@
 
 const API = '';
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const ROOM_CONFIG = {
+let ROOM_CONFIG = {
   1: { rate: 2700, maxGuests: 6 },
   2: { rate: 2400, maxGuests: 5 },
   3: { rate: 1600, maxGuests: 3 },
@@ -955,6 +955,68 @@ qs('#save-guest-btn').addEventListener('click', async () => {
 /* ══════════════════════════════════════════════
    SETTINGS
    ══════════════════════════════════════════════ */
+async function loadRoomRates() {
+  try {
+    const rooms = await api('GET', '/api/rooms');
+    rooms.forEach(r => { ROOM_CONFIG[r.door] = { rate: r.rate, maxGuests: r.maxGuests }; });
+    renderRateList(rooms);
+  } catch (err) {
+    const el = qs('#door-rates-list');
+    if (el) el.innerHTML = `<div style="color:var(--danger);font-size:13px">Failed to load rates.</div>`;
+  }
+}
+
+function renderRateList(rooms) {
+  const el = qs('#door-rates-list');
+  if (!el) return;
+  el.innerHTML = rooms.map((r, i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;${i < rooms.length - 1 ? 'border-bottom:1px solid var(--border)' : ''}">
+      <span style="font-weight:500">Door ${r.door} <span style="color:var(--text-muted);font-size:12px;font-weight:400">(max ${r.maxGuests} guests)</span></span>
+      <span class="rate-editable" data-door="${r.door}" data-rate="${r.rate}" title="Click to edit rate" style="cursor:pointer;color:var(--primary);font-weight:600;text-decoration:underline dotted;text-underline-offset:3px">${fmt(r.rate)}/night <span style="font-size:11px;opacity:0.6;margin-left:2px">✏</span></span>
+    </div>`).join('');
+  el.querySelectorAll('.rate-editable').forEach(span => {
+    span.addEventListener('click', () => startRateEdit(span));
+  });
+}
+
+function startRateEdit(span) {
+  const door = parseInt(span.dataset.door);
+  const currentRate = parseInt(span.dataset.rate);
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.min = '1';
+  input.value = currentRate;
+  input.style.cssText = 'width:110px;padding:4px 8px;border:1.5px solid var(--primary);border-radius:6px;font-size:14px;font-weight:600;text-align:right';
+  span.replaceWith(input);
+  input.focus();
+  input.select();
+
+  async function saveRate() {
+    const newRate = parseInt(input.value);
+    if (!newRate || newRate <= 0) { cancelEdit(); return; }
+    try {
+      await api('PUT', `/api/rooms/${door}`, { rate: newRate });
+      ROOM_CONFIG[door].rate = newRate;
+      toast(`Door ${door} rate updated to ${fmt(newRate)}`);
+      await loadRoomRates();
+      loadDashboard();
+    } catch (err) {
+      toast('Failed to save rate: ' + err.message, 'error');
+      cancelEdit();
+    }
+  }
+
+  function cancelEdit() {
+    loadRoomRates();
+  }
+
+  input.addEventListener('blur', saveRate);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { input.blur(); }
+    if (e.key === 'Escape') { input.removeEventListener('blur', saveRate); cancelEdit(); }
+  });
+}
+
 async function loadSettings() {
   try {
     const settings = await api('GET', '/api/settings');
@@ -964,6 +1026,7 @@ async function loadSettings() {
   } catch (err) {
     toast('Failed to load settings: ' + err.message, 'error');
   }
+  await loadRoomRates();
 }
 
 qs('#save-webhook-btn').addEventListener('click', async () => {
@@ -1612,4 +1675,7 @@ async function downloadTransactionReceipt(txId) {
 /* ══════════════════════════════════════════════
    INIT
    ══════════════════════════════════════════════ */
-loadDashboard();
+(async () => {
+  await loadRoomRates();
+  loadDashboard();
+})();
