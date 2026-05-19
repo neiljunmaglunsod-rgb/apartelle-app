@@ -108,16 +108,17 @@ app.get('/api/dashboard', async (req, res) => {
     const Transaction = require('./models/Transaction');
     const Guest = require('./models/Guest');
 
-    const today = new Date();
-    today.setUTCHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    // Philippines is UTC+8 (no DST) — compute today/tomorrow in PH local calendar date
+    const nowPH     = new Date(Date.now() + 8 * 60 * 60 * 1000);
+    const today     = new Date(Date.UTC(nowPH.getUTCFullYear(), nowPH.getUTCMonth(), nowPH.getUTCDate()));
+    const tomorrow  = new Date(today.getTime() + 86400000);
     const monthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
-    const monthEnd = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1));
+    const monthEnd   = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1));
     const daysInMonth = new Date(today.getUTCFullYear(), today.getUTCMonth() + 1, 0).getUTCDate();
 
     const [activeBookings, checkInBookings, checkOutBookings, monthIncome, monthExpense, totalGuests, monthOccupancy] = await Promise.all([
-      Booking.find({ status: { $in: ['confirmed', 'checked-in'] }, checkIn: { $lte: today }, checkOut: { $gt: today } }),
+      // $gte (not $gt) so check-out-day bookings are still counted as active (door in use until guest leaves)
+      Booking.find({ status: { $in: ['confirmed', 'checked-in'] }, checkIn: { $lte: today }, checkOut: { $gte: today } }),
       Booking.find({ checkIn: { $gte: today, $lt: tomorrow }, status: { $nin: ['cancelled'] } }).select('guestName guestContact doorNumber checkIn checkOut guestCount source'),
       Booking.find({ checkOut: { $gte: today, $lt: tomorrow }, status: { $nin: ['cancelled'] } }).select('guestName guestContact doorNumber checkIn checkOut guestCount source'),
       Transaction.aggregate([{ $match: { type: 'income', date: { $gte: monthStart, $lt: monthEnd } } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
@@ -130,6 +131,8 @@ app.get('/api/dashboard', async (req, res) => {
     ]);
 
     const occupiedDoors = activeBookings.map(b => b.doorNumber);
+    const checkOutDoorSet = new Set(checkOutBookings.map(b => b.doorNumber));
+    const checkInDoorSet  = new Set(checkInBookings.map(b => b.doorNumber));
     const activeBookingsByDoor = {};
     activeBookings.forEach(b => {
       activeBookingsByDoor[b.doorNumber] = {
@@ -139,7 +142,9 @@ app.get('/api/dashboard', async (req, res) => {
         checkOut: b.checkOut,
         guestCount: b.guestCount,
         status: b.status,
-        _id: b._id
+        _id: b._id,
+        isCheckingOutToday: checkOutDoorSet.has(b.doorNumber),
+        isCheckingInToday:  checkInDoorSet.has(b.doorNumber)
       };
     });
 

@@ -137,14 +137,22 @@ async function loadDashboard() {
     const grid = qs('#rooms-status');
     grid.innerHTML = '';
     [1,2,3,4].forEach(door => {
-      const isOccupied = d.occupiedDoors.includes(door);
       const booking = d.activeBookingsByDoor?.[door] || null;
       const conf = ROOM_CONFIG[door];
-      const cls = isOccupied ? 'occupied' : 'available';
-      const label = isOccupied ? '● Occupied' : '● Available';
+
+      let cls, label;
+      if (!booking) {
+        cls = 'available'; label = '● Available';
+      } else if (booking.isCheckingOutToday) {
+        cls = 'checking-out'; label = '● Checking out today';
+      } else if (booking.isCheckingInToday) {
+        cls = 'checking-in'; label = '● Checking in today';
+      } else {
+        cls = 'occupied'; label = '● Occupied';
+      }
 
       let bodyHtml = `<div class="room-rate-row">${fmt(conf.rate)}/night · max ${conf.maxGuests} guests</div>`;
-      if (isOccupied && booking) {
+      if (booking) {
         const nights = Math.round((new Date(booking.checkOut) - new Date(booking.checkIn)) / 86400000);
         bodyHtml += `
           <div class="room-guest-name">👤 ${escHtml(booking.guestName)}</div>

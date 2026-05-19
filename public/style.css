@@ -301,6 +301,12 @@ nav a[data-page="reports"].active {
 .room-card.occupied .room-card-header {
   background: linear-gradient(135deg, #7f1d1d, #991b1b);
 }
+.room-card.checking-out .room-card-header {
+  background: linear-gradient(135deg, #78350f, #92400e);
+}
+.room-card.checking-in .room-card-header {
+  background: linear-gradient(135deg, #14532d, #166534);
+}
 
 .room-door-label {
   font-size: 15px;
@@ -308,8 +314,6 @@ nav a[data-page="reports"].active {
   color: var(--accent);
   letter-spacing: 0.02em;
 }
-
-.room-card.occupied .room-door-label { color: #fecaca; }
 
 .room-status-badge {
   display: inline-flex;
@@ -322,12 +326,20 @@ nav a[data-page="reports"].active {
   letter-spacing: 0.02em;
 }
 
-.room-card.available .room-status-badge { background: rgba(201,168,76,0.2); color: var(--accent); }
-.room-card.occupied  .room-status-badge { background: rgba(255,255,255,0.15); color: #fff; }
+.room-card.available     .room-status-badge { background: rgba(201,168,76,0.2);  color: var(--accent); }
+.room-card.occupied      .room-status-badge { background: rgba(255,255,255,0.15); color: #fff; }
+.room-card.checking-out  .room-status-badge { background: rgba(255,255,255,0.15); color: #fde68a; }
+.room-card.checking-in   .room-status-badge { background: rgba(255,255,255,0.15); color: #bbf7d0; }
+
+.room-card.occupied     .room-door-label { color: #fecaca; }
+.room-card.checking-out .room-door-label { color: #fde68a; }
+.room-card.checking-in  .room-door-label { color: #bbf7d0; }
 
 .room-card-body { padding: 12px 14px 14px; }
-.room-card.available .room-card-body { background: #fafaf7; }
-.room-card.occupied  .room-card-body { background: #fff5f5; }
+.room-card.available     .room-card-body { background: #fafaf7; }
+.room-card.occupied      .room-card-body { background: #fff5f5; }
+.room-card.checking-out  .room-card-body { background: #fffbeb; }
+.room-card.checking-in   .room-card-body { background: #f0fdf4; }
 
 .room-rate-row { font-size: 11.5px; color: var(--text-muted); margin-bottom: 6px; }
 
