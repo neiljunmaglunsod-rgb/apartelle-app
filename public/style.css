@@ -343,6 +343,22 @@ nav a[data-page="reports"].active {
 
 .room-rate-row { font-size: 11.5px; color: var(--text-muted); margin-bottom: 6px; }
 
+.btn-checkin {
+  margin-top: 10px;
+  width: 100%;
+  padding: 6px 0;
+  background: #166534;
+  color: #bbf7d0;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-checkin:hover { background: #14532d; }
+
 .room-guest-name {
   font-size: 13.5px;
   font-weight: 700;

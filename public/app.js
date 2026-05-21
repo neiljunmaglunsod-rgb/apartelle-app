@@ -161,6 +161,9 @@ async function loadDashboard() {
             Out: ${fmtDate(booking.checkOut)}<br/>
             <span class="nights-tag">${nights} night${nights !== 1 ? 's' : ''} · ${booking.guestCount} guest${booking.guestCount !== 1 ? 's' : ''}</span>
           </div>`;
+        if (cls === 'checking-in') {
+          bodyHtml += `<button class="btn-checkin" onclick="event.stopPropagation();checkInDoor('${booking._id}',${door})">✓ Check In</button>`;
+        }
       } else {
         bodyHtml += `<div class="room-available-hint">✓ Ready for booking</div>`;
       }
@@ -210,15 +213,22 @@ async function loadDashboard() {
     const ciItems = d.todayCheckInDetails || [];
     const coItems = d.todayCheckOutDetails || [];
 
-    ciList.innerHTML = ciItems.length ? ciItems.map(b => `
-      <div class="activity-item checkin">
-        <div class="activity-icon">📥</div>
+    // Sort: pending (confirmed) first, already checked-in last
+    const ciPending = ciItems.filter(b => b.status !== 'checked-in');
+    const ciDone    = ciItems.filter(b => b.status === 'checked-in');
+    const ciSorted  = [...ciPending, ...ciDone];
+    ciList.innerHTML = ciSorted.length ? ciSorted.map(b => {
+      const done = b.status === 'checked-in';
+      return `
+      <div class="activity-item checkin" style="${done ? 'opacity:0.55' : ''}">
+        <div class="activity-icon">${done ? '✅' : '📥'}</div>
         <div class="activity-info">
-          <div class="activity-name">${escHtml(b.guestName)}</div>
+          <div class="activity-name">${escHtml(b.guestName)}${done ? ' <span style="font-size:11px;color:var(--success);font-weight:600">Checked in</span>' : ''}</div>
           <div class="activity-detail">${escHtml(b.guestContact || '—')} · ${b.guestCount} guest${b.guestCount !== 1 ? 's' : ''}</div>
         </div>
         <div class="activity-door">Door ${b.doorNumber}</div>
-      </div>`).join('') : `<div class="activity-empty">No check-ins today</div>`;
+      </div>`;
+    }).join('') : `<div class="activity-empty">No check-ins today</div>`;
 
     coList.innerHTML = coItems.length ? coItems.map(b => `
       <div class="activity-item checkout">
@@ -251,6 +261,16 @@ async function loadDashboard() {
 }
 
 function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function checkInDoor(bookingId, door) {
+  try {
+    await api('PUT', `/api/bookings/${bookingId}`, { status: 'checked-in' });
+    toast(`Door ${door} — guest checked in`);
+    loadDashboard();
+  } catch (err) {
+    toast('Check-in failed: ' + err.message, 'error');
+  }
+}
 
 /* ══════════════════════════════════════════════
    CALENDAR

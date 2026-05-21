@@ -119,8 +119,8 @@ app.get('/api/dashboard', async (req, res) => {
     const [activeBookings, checkInBookings, checkOutBookings, monthIncome, monthExpense, totalGuests, monthOccupancy] = await Promise.all([
       // $gte (not $gt) so check-out-day bookings are still counted as active (door in use until guest leaves)
       Booking.find({ status: { $in: ['confirmed', 'checked-in'] }, checkIn: { $lte: today }, checkOut: { $gte: today } }),
-      Booking.find({ checkIn: { $gte: today, $lt: tomorrow }, status: { $nin: ['cancelled'] } }).select('guestName guestContact doorNumber checkIn checkOut guestCount source'),
-      Booking.find({ checkOut: { $gte: today, $lt: tomorrow }, status: { $nin: ['cancelled'] } }).select('guestName guestContact doorNumber checkIn checkOut guestCount source'),
+      Booking.find({ checkIn: { $gte: today, $lt: tomorrow }, status: { $nin: ['cancelled'] } }).select('guestName guestContact doorNumber checkIn checkOut guestCount source status _id'),
+      Booking.find({ checkOut: { $gte: today, $lt: tomorrow }, status: { $nin: ['cancelled'] } }).select('guestName guestContact doorNumber checkIn checkOut guestCount source status _id'),
       Transaction.aggregate([{ $match: { type: 'income', date: { $gte: monthStart, $lt: monthEnd } } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
       Transaction.aggregate([{ $match: { type: 'expense', date: { $gte: monthStart, $lt: monthEnd } } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
       Guest.countDocuments(),
@@ -130,9 +130,9 @@ app.get('/api/dashboard', async (req, res) => {
       ])
     ]);
 
-    const occupiedDoors = activeBookings.map(b => b.doorNumber);
     const checkOutDoorSet = new Set(checkOutBookings.map(b => b.doorNumber));
-    const checkInDoorSet  = new Set(checkInBookings.map(b => b.doorNumber));
+    // Only confirmed bookings checking in today count as "pending arrival"
+    const checkInDoorSet  = new Set(checkInBookings.filter(b => b.status === 'confirmed').map(b => b.doorNumber));
     const activeBookingsByDoor = {};
     activeBookings.forEach(b => {
       activeBookingsByDoor[b.doorNumber] = {
@@ -144,9 +144,14 @@ app.get('/api/dashboard', async (req, res) => {
         status: b.status,
         _id: b._id,
         isCheckingOutToday: checkOutDoorSet.has(b.doorNumber),
-        isCheckingInToday:  checkInDoorSet.has(b.doorNumber)
+        // isCheckingInToday only when still 'confirmed' — once status is 'checked-in' the card becomes Occupied
+        isCheckingInToday: b.status === 'confirmed' && checkInDoorSet.has(b.doorNumber)
       };
     });
+    // OCCUPIED = doors whose guest has actually checked in
+    const occupiedDoors = activeBookings.filter(b => b.status === 'checked-in').map(b => b.doorNumber);
+    // AVAILABLE = doors with no active booking at all (not just non-checked-in)
+    const allActiveDoorSet = new Set(activeBookings.map(b => b.doorNumber));
 
     const occupancyByDoor = {};
     monthOccupancy.forEach(o => {
@@ -156,9 +161,12 @@ app.get('/api/dashboard', async (req, res) => {
     res.json({
       occupiedDoors,
       activeBookingsByDoor,
-      availableDoors: [1, 2, 3, 4].filter(d => !occupiedDoors.includes(d)),
-      todayCheckIns: checkInBookings.length,
+      // Available = no active booking (confirmed or checked-in) covering today
+      availableDoors: [1, 2, 3, 4].filter(d => !allActiveDoorSet.has(d)),
+      // CHECK-INS TODAY = pending arrivals only (confirmed, not yet checked in)
+      todayCheckIns: checkInBookings.filter(b => b.status === 'confirmed').length,
       todayCheckOuts: checkOutBookings.length,
+      // Send all today's check-ins (pending + already checked-in) so UI can show both
       todayCheckInDetails: checkInBookings,
       todayCheckOutDetails: checkOutBookings,
       monthIncome: monthIncome[0]?.total || 0,
