@@ -35,6 +35,13 @@ app.use(session({
 
 // Auth middleware
 const requireAuth = (req, res, next) => {
+  // API key auth — used by n8n and external services
+  const apiKey = req.headers['x-api-key'];
+  if (apiKey !== undefined) {
+    const validKey = process.env.BOOKING_API_KEY;
+    if (validKey && apiKey === validKey) { req.isApiKey = true; return next(); }
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
   const publicPaths = ['/login.html', '/style.css', '/app.js', '/images', '/image'];
   if (publicPaths.some(p => req.path === p || req.path.startsWith(p + '/'))) return next();
   if (req.session.user) return next();

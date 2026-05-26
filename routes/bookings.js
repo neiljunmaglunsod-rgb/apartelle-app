@@ -120,6 +120,52 @@ router.get('/:id', async (req, res) => {
 // POST create booking
 router.post('/', async (req, res) => {
   try {
+    // External API path: validate, log, and sanitise body
+    if (req.isApiKey) {
+      const ts = new Date().toISOString();
+      console.log(`[API] ${ts} POST /api/bookings ip=${req.ip} body=${JSON.stringify(req.body)}`);
+
+      const REQUIRED = ['guestName', 'guestContact', 'doorNumber', 'checkIn', 'checkOut', 'guestCount'];
+      const missing = REQUIRED.filter(f => req.body[f] === undefined || req.body[f] === null || req.body[f] === '');
+      if (missing.length) {
+        console.log(`[API] 400 missing fields: ${missing.join(', ')}`);
+        return res.status(400).json({ error: `Missing required fields: ${missing.join(', ')}` });
+      }
+
+      const { guestName, guestContact, doorNumber, checkIn, checkOut, guestCount } = req.body;
+
+      if (![1, 2, 3, 4].includes(Number(doorNumber))) {
+        console.log(`[API] 400 invalid doorNumber: ${doorNumber}`);
+        return res.status(400).json({ error: 'doorNumber must be 1, 2, 3, or 4' });
+      }
+      const ciDate = new Date(checkIn);
+      const coDate = new Date(checkOut);
+      if (isNaN(ciDate.getTime()) || isNaN(coDate.getTime())) {
+        console.log(`[API] 400 invalid date format`);
+        return res.status(400).json({ error: 'checkIn and checkOut must be valid ISO date strings' });
+      }
+      if (coDate <= ciDate) {
+        console.log(`[API] 400 checkOut not after checkIn`);
+        return res.status(400).json({ error: 'checkOut must be after checkIn' });
+      }
+      const gc = Number(guestCount);
+      if (!Number.isInteger(gc) || gc < 1) {
+        console.log(`[API] 400 invalid guestCount: ${guestCount}`);
+        return res.status(400).json({ error: 'guestCount must be a positive integer' });
+      }
+
+      // Rebuild body with only allowed fields; nights/totalPrice are calculated by the pre-save hook
+      req.body = {
+        guestName: String(guestName).trim(),
+        guestContact: String(guestContact).trim(),
+        doorNumber: Number(doorNumber),
+        checkIn: ciDate,
+        checkOut: coDate,
+        guestCount: gc,
+        source: ['Airbnb', 'Walk-in', 'Facebook', 'Other'].includes(req.body.source) ? req.body.source : 'Other'
+      };
+    }
+
     // Check for conflicts
     const { doorNumber, checkIn, checkOut } = req.body;
     const conflict = await Booking.findOne({
@@ -129,7 +175,9 @@ router.post('/', async (req, res) => {
       checkOut: { $gt: new Date(checkIn) }
     });
     if (conflict) {
-      return res.status(409).json({ error: `Door ${doorNumber} is already booked from ${conflict.checkIn.toDateString()} to ${conflict.checkOut.toDateString()}` });
+      const msg = `Door ${doorNumber} is already booked from ${conflict.checkIn.toDateString()} to ${conflict.checkOut.toDateString()}`;
+      if (req.isApiKey) console.log(`[API] 400 conflict: ${msg}`);
+      return res.status(req.isApiKey ? 400 : 409).json({ error: msg });
     }
 
     // Create or find guest
@@ -165,8 +213,12 @@ router.post('/', async (req, res) => {
     // Fire n8n webhook (non-blocking)
     fireWebhook(booking);
 
+    if (req.isApiKey) {
+      console.log(`[API] 201 created booking=${booking._id} door=${booking.doorNumber} guest="${booking.guestName}" nights=${booking.nights} total=${booking.totalPrice}`);
+    }
     res.status(201).json({ booking, transaction });
   } catch (err) {
+    if (req.isApiKey) console.log(`[API] 500 error: ${err.message}`);
     res.status(400).json({ error: err.message });
   }
 });
