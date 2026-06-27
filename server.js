@@ -150,9 +150,9 @@ app.get('/api/dashboard', async (req, res) => {
         guestCount: b.guestCount,
         status: b.status,
         _id: b._id,
-        isCheckingOutToday: b.status === 'checked-in' && checkOutDoorSet.has(b.doorNumber),
+        isCheckingOutToday: b.status === 'checked-in' && new Date(b.checkOut).toISOString().slice(0, 10) === today.toISOString().slice(0, 10),
         // isCheckingInToday only when still 'confirmed' — once status is 'checked-in' the card becomes Occupied
-        isCheckingInToday: b.status === 'confirmed' && checkInDoorSet.has(b.doorNumber)
+        isCheckingInToday: b.status === 'confirmed' && new Date(b.checkIn).toISOString().slice(0, 10) === today.toISOString().slice(0, 10),
       };
     });
     // OCCUPIED = doors whose guest has actually checked in
