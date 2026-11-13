@@ -82,7 +82,7 @@ router.get('/availability', async (req, res) => {
 router.get('/price-preview', async (req, res) => {
   try {
     const { door, checkIn, checkOut, guestCount } = req.query;
-    const ROOM_DEFAULTS = { 1: { rate: 2700, maxGuests: 6 }, 2: { rate: 2400, maxGuests: 5 }, 3: { rate: 1600, maxGuests: 3 }, 4: { rate: 2800, maxGuests: 8 } };
+    const ROOM_DEFAULTS = { 1: { rate: 2800, maxGuests: 6 }, 2: { rate: 2400, maxGuests: 4 }, 3: { rate: 1600, maxGuests: 2 }, 4: { rate: 3200, maxGuests: 9 } };
     const doorNum = parseInt(door);
     const config = ROOM_DEFAULTS[doorNum];
     if (!config) return res.status(400).json({ error: 'Invalid door' });
