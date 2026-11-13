@@ -1057,6 +1057,27 @@ async function loadSettings() {
   await loadRoomRates();
 }
 
+qs('#change-password-btn').addEventListener('click', async () => {
+  const cur = qs('#cp-current').value;
+  const nw = qs('#cp-new').value;
+  const cf = qs('#cp-confirm').value;
+  const statusEl = qs('#cp-status');
+  const fail = (m) => { statusEl.textContent = '❌ ' + m; statusEl.style.color = 'var(--danger)'; };
+  if (!cur || !nw) return fail('Fill in your current and new password.');
+  if (nw.length < 8) return fail('New password must be at least 8 characters.');
+  if (nw !== cf) return fail('New passwords do not match.');
+  try {
+    await api('POST', '/api/auth/change-password', { currentPassword: cur, newPassword: nw });
+    qs('#cp-current').value = ''; qs('#cp-new').value = ''; qs('#cp-confirm').value = '';
+    statusEl.textContent = '✅ Password changed. Use the new one next time you log in.';
+    statusEl.style.color = 'var(--success)';
+    toast('Password changed');
+  } catch (err) {
+    fail(err.message);
+    toast('Failed: ' + err.message, 'error');
+  }
+});
+
 qs('#save-webhook-btn').addEventListener('click', async () => {
   const url = qs('#webhook-url').value.trim();
   const statusEl = qs('#webhook-status');

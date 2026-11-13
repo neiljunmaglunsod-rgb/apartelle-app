@@ -7,7 +7,7 @@ mongoose.connect(process.env.MONGODB_URI, { family: 4 }).then(async () => {
   if (existing) {
     console.log('User already exists!');
   } else {
-    await User.create({ username: 'neil', password: 'Colorado13', role: 'admin' });
+    await User.create({ username: 'neil', password: process.env.ADMIN_PASSWORD, role: 'admin' });
     console.log('Admin created!');
   }
   process.exit();

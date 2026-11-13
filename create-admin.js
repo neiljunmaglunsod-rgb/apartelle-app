@@ -7,9 +7,11 @@ const User = require('./models/User');
 
 // ── Set your credentials here ──────────────────────────
 const USERNAME = 'admin';
-const PASSWORD = 'admin123';
+const PASSWORD = process.env.ADMIN_PASSWORD; // set ADMIN_PASSWORD in .env before running
 const ROLE     = 'admin';       // 'admin' or 'staff'
 // ───────────────────────────────────────────────────────
+
+if (!process.env.ADMIN_PASSWORD) { console.error('Set ADMIN_PASSWORD in .env first'); process.exit(1); }
 
 async function createAdmin() {
   await mongoose.connect(process.env.MONGODB_URI, { family: 4 });
