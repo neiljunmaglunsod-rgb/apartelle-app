@@ -1,10 +1,10 @@
 const mongoose = require('mongoose');
 
 const ROOM_CONFIG = {
-  1: { rate: 2700, maxGuests: 6 },
-  2: { rate: 2400, maxGuests: 5 },
-  3: { rate: 1600, maxGuests: 3 },
-  4: { rate: 2800, maxGuests: 8 }
+  1: { rate: 2800, maxGuests: 6 },
+  2: { rate: 2400, maxGuests: 4 },
+  3: { rate: 1600, maxGuests: 2 },
+  4: { rate: 3200, maxGuests: 9 }
 };
 const EXTRA_BED_CHARGE = 250;
 
